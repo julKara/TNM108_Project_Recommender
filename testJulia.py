@@ -1,24 +1,24 @@
+
+
+# Imports
 import pandas as pd
-from summa.summarizer import summarize
-from summa import keywords
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-# 1. Extract keywords from all reviews.
-#   a. Add the genre tags.
-#   b. Maybe add keywords from the synopsis.
-# 2. Input user keywords.
-# 3. Match the user keywords to the most similar movies (cosine similarity).
-#   a. Factor in popularity.
+##################### Import data & processing #####################
+data = pd.read_csv("./data/rotten_tomatoes_critic_reviews.csv")
 
-###################### Importing and preprocessing data #####################
-
-# Ladda in data-filerna.
-reviews = pd.read_csv("./data/rotten_tomatoes_critic_reviews.csv")
-movies = pd.read_csv("./data/rotten_tomatoes_movies.csv")
+# df = data[['rotten_tomatoes_link', 'review_content']][:20]
+# print(df.head())
 
 # Filter data where the content of the review is not null
-data = reviews[reviews['review_content'].notnull()]
+data = data[data['review_content'].notnull()]
 
-data = reviews[reviews['review_score'].notnull()]
+data = data[data['review_score'].notnull()]
 
 # Seperate fresh and rotten reviews
 fresh_reviews = data[(data['review_type'] == 'Fresh') & (data['review_score'].str.match(r'\d+/\d+'))]
@@ -51,13 +51,7 @@ reviews_data.drop(['review_date'], axis=1, inplace=True)
 # Print the remaining data types
 # print(reviews_data.dtypes)
 
-# Slå ihop reviews för samma film.
-agg_functions = {'rotten_tomatoes_link': 'first', 'review_content': 'sum', }
-df_new = reviews_data.groupby(reviews_data['rotten_tomatoes_link']).aggregate(agg_functions)
-combinedReviews = df_new["review_content"]
+# How much
+print(len(reviews_data))
 
-# How much we have left
-print(len(combinedReviews))
-
-df = data[['rotten_tomatoes_link', 'review_content']][:20]
-print(df.head())
+##################### Adding and checking emoticons #####################
