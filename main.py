@@ -1,8 +1,11 @@
 
 
 # Do thing weee
-print("Hello World");
+print("Hello World")
 
-print("Woooork");
+print("Woooork")
 
-print("Woooork2");
+print("Woooork2")
+
+
+# :3
