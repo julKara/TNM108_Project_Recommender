@@ -9,116 +9,34 @@ from summa import keywords
 # 3. Match the user keywords to the most similar movies (cosine similarity).
 #   a. Factor in popularity.
 
-###################### Importing and preprocessing data #####################
+keys = pd.read_csv("./keywords.csv")
 
-# Ladda in data-filerna.
-reviews = pd.read_csv("./data/rotten_tomatoes_critic_reviews.csv")
-movies = pd.read_csv("./data/rotten_tomatoes_movies.csv")
+#print(keys["genres"].to_string())
 
-# Filter data where the content of the review is not null
-data = reviews[reviews['review_content'].notnull()]
+kh = keys["review_content"] # jämför med reviews 
+#kh = keys["keywords"]       # jämför med keywords från reviews... mycket sämre
+inputkey = "haunted house"
 
-data = reviews[reviews['review_score'].notnull()]
+Z = kh
+from sklearn.feature_extraction.text import TfidfVectorizer
+tfidf_vectorizer = TfidfVectorizer()
+tfidf_matrix = tfidf_vectorizer.fit_transform(Z)
+from sklearn.metrics.pairwise import cosine_similarity
+iktfidf = tfidf_vectorizer.transform([inputkey])
+cos_similarity = cosine_similarity(iktfidf[0], tfidf_matrix)
+csims = cos_similarity[0]
 
-# Seperate fresh and rotten reviews
-fresh_reviews = data[(data['review_type'] == 'Fresh') & (data['review_score'].str.match(r'\d+/\d+'))]
-rotten_reviews = data[(data['review_type'] == 'Rotten')& (data['review_score'].str.match(r'\d+/\d+'))]
+popularity = keys["audience_count"].to_numpy()
+#csims = csims + (popularity / 100000000) # delat på en miljard
+#csims = csims * popularity
 
-# Randomly Sample 75000 datapoints each to make up a 'balanced' dataset of both Fresh and Rotten at 50:50 ratio
-sampled_fresh = fresh_reviews.sample(n=75000, random_state=42) 
-sampled_rotten = rotten_reviews.sample(n=75000, random_state=42)
-
-# Combine both sampled data
-reviews_data = pd.concat([sampled_fresh, sampled_rotten])
-
-#Shuffle and make the final dataset
-reviews_data = reviews_data.sample(frac=1, random_state=42).reset_index(drop=True)
-
-# Look at the top few rows of the dataset
-# print(reviews_data.head())
-
-# Print the data types
-# print(reviews_data.dtypes)
-
-###################### Dropping unneccessary features #####################
-reviews_data.drop(['critic_name'], axis=1, inplace=True)
-reviews_data.drop(['top_critic'], axis=1, inplace=True)
-reviews_data.drop(['publisher_name'], axis=1, inplace=True)
-reviews_data.drop(['review_type'], axis=1, inplace=True)
-reviews_data.drop(['review_score'], axis=1, inplace=True)
-reviews_data.drop(['review_date'], axis=1, inplace=True)
-
-movies_data = movies # utveckla senare
-movies_data.drop(['original_release_date'],axis=1, inplace=True)
-movies_data.drop(['streaming_release_date'],axis=1, inplace=True)
-movies_data.drop(['runtime'],axis=1, inplace=True)
-movies_data.drop(['production_company'],axis=1, inplace=True)
-movies_data.drop(['tomatometer_status'],axis=1, inplace=True)
-movies_data.drop(['tomatometer_rating'],axis=1, inplace=True)
-movies_data.drop(['tomatometer_count'],axis=1, inplace=True)
-movies_data.drop(['audience_status'],axis=1, inplace=True)
-movies_data.drop(['audience_rating'],axis=1, inplace=True)
-movies_data.drop(['audience_count'],axis=1, inplace=True)
-movies_data.drop(['tomatometer_top_critics_count'],axis=1, inplace=True)
-movies_data.drop(['tomatometer_fresh_critics_count'],axis=1, inplace=True)
-movies_data.drop(['tomatometer_rotten_critics_count'],axis=1, inplace=True)
-
-# Print the remaining data types
-# print(reviews_data.dtypes)
-
-# Slå ihop reviews för samma film.
-agg_functions = {'rotten_tomatoes_link': 'first', 'review_content': 'sum', }
-combinedReviews = reviews_data.groupby(reviews_data['rotten_tomatoes_link']).aggregate(agg_functions)
-
-# How much we have left
-print(len(combinedReviews))
+keys['score'] = csims
+keys = keys.sort_values(by=['score'], ascending=False)
+keys = keys.set_index('score')
 
 
-print('-----------------------------------------------------------------------------')
-
-combinedReviews = combinedReviews.set_index('rotten_tomatoes_link')
-movies_data = movies_data.set_index('rotten_tomatoes_link')
-print(combinedReviews)
-
-revcon = combinedReviews['review_content']
-movrev = movies_data.join(revcon)
-print(movrev.loc['m/star_wars']['review_content'])
-print(movrev)
-
-# före  17712 filmer
-# efter 13686 filmer
-
-##################################################################################################
-
-# detta ger en lista av alla keywords.
-# om en film inte kan hitta keywords, ta bort från datan.
-# detta tar tid, så vi kör den bara en gång
-
-"""
-klist = []
-movrev = movrev.reset_index()
-i = 0
-size = len(movrev)
-while (i < len(movrev)):
-    try:
-        kk = keywords.keywords(movrev.loc[i,'review_content']).replace("\n", " ")
-        if kk != "":
-            print(i)
-            klist.append(kk)
-        else:
-            print("         " + movrev.loc[i,'movie_title'])
-            movrev = movrev.drop(i)
-            movrev = movrev.reset_index(drop=True)
-            i -= 1
-    except: 
-        print("         " + movrev.loc[i,'movie_title'])
-        movrev = movrev.drop(i)
-        movrev = movrev.reset_index(drop=True)
-        i -= 1
-    i+=1
-kseries = pd.Series(klist)
-movrev.insert(loc=0, column='keywords', value=kseries)
-movrev.to_csv('keywords.csv', index=False)
-"""
-
-#######################################################################################################
+print("\n\n############### IF YOU WANT #######################")
+print(inputkey)
+print("############### YOU SHOULD WATCH ##################")
+print(keys.head(10)['movie_title'])
+print("\n\n")
