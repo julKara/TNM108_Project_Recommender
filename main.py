@@ -18,7 +18,11 @@ from nltk.corpus import stopwords
 words = pd.read_csv("./keywords_with_genres.csv")
 
 # User input
-userInput = input("What kind of movie do you want to see:")
+userInput = input("Write a review: ")
+
+while userInput == "":
+    userInput = input("Please write a review: ")
+
 
 # test text: I want to see a funny movie in space where the hero travels between planets and fights monsters
 
