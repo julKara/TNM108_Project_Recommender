@@ -56,6 +56,6 @@ if len(words) != 0:
     for idx, row in top_recommendations.iterrows():
         print(f"{row['movie_title']} | Genres: {row['genres']} | Percentage Match: {idx:.2f}")
 else:
-    print("No movies found. Suggesting based on related genres instead.")
+    print("No movies found.")
         
 print("\n\n")
