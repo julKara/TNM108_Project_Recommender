@@ -1,63 +1,43 @@
+# Dependencies
 import pandas as pd
-from summa.summarizer import summarize
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
+import seaborn as sns
+import matplotlib.pyplot as plt
 from summa import keywords
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import nltk
+from nltk.corpus import stopwords
 
-# 1. Extract keywords from all reviews.
-#   a. Add the genre tags.
-#   b. Maybe add keywords from the synopsis.
-# 2. Input user keywords.
-# 3. Match the user keywords to the most similar movies (cosine similarity).
-#   a. Factor in popularity.
 
-###################### Importing and preprocessing data #####################
 
-# Ladda in data-filerna.
-reviews = pd.read_csv("./data/rotten_tomatoes_critic_reviews.csv")
-movies = pd.read_csv("./data/rotten_tomatoes_movies.csv")
+# Keywords
+words = pd.read_csv("./keywords_with_genres.csv")
 
-# Filter data where the content of the review is not null
-data = reviews[reviews['review_content'].notnull()]
+# User input
+userInput = input("What kind of movie do you want to see:")
 
-data = reviews[reviews['review_score'].notnull()]
+# test text: I want to see a funny movie in space where the hero travels between planets and fights monsters
 
-# Seperate fresh and rotten reviews
-fresh_reviews = data[(data['review_type'] == 'Fresh') & (data['review_score'].str.match(r'\d+/\d+'))]
-rotten_reviews = data[(data['review_type'] == 'Rotten')& (data['review_score'].str.match(r'\d+/\d+'))]
+# Turn the string into an array (Needed for tfidf)
+userString = [userInput]
 
-# Randomly Sample 75000 datapoints each to make up a 'balanced' dataset of both Fresh and Rotten at 50:50 ratio
-sampled_fresh = fresh_reviews.sample(n=75000, random_state=42) 
-sampled_rotten = rotten_reviews.sample(n=75000, random_state=42)
+# Convert to tf-idf
+tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+keyword_matrix = tfidf_vectorizer.fit_transform(words['combined_keywords'])
+input_tfidf = tfidf_vectorizer.transform(userString)
 
-# Combine both sampled data
-reviews_data = pd.concat([sampled_fresh, sampled_rotten])
+# Cosine similarity
+cos_similarity = cosine_similarity(input_tfidf, keyword_matrix)
+csims = cos_similarity[0]
 
-#Shuffle and make the final dataset
-reviews_data = reviews_data.sample(frac=1, random_state=42).reset_index(drop=True)
+# Apply similarity score to dataset
+words['score'] = csims
+words = words.sort_values(by=['score'], ascending=False)
+words = words.set_index('score')
 
-# Look at the top few rows of the dataset
-# print(reviews_data.head())
-
-# Print the data types
-# print(reviews_data.dtypes)
-
-###################### Dropping unneccessary features #####################
-reviews_data.drop(['critic_name'], axis=1, inplace=True)
-reviews_data.drop(['top_critic'], axis=1, inplace=True)
-reviews_data.drop(['publisher_name'], axis=1, inplace=True)
-reviews_data.drop(['review_type'], axis=1, inplace=True)
-reviews_data.drop(['review_score'], axis=1, inplace=True)
-reviews_data.drop(['review_date'], axis=1, inplace=True)
-
-# Print the remaining data types
-# print(reviews_data.dtypes)
-
-# Slå ihop reviews för samma film.
-agg_functions = {'rotten_tomatoes_link': 'first', 'review_content': 'sum', }
-df_new = reviews_data.groupby(reviews_data['rotten_tomatoes_link']).aggregate(agg_functions)
-combinedReviews = df_new["review_content"]
-
-# How much we have left
-print(len(combinedReviews))
-
-df = data[['rotten_tomatoes_link', 'review_content']][:20]
-print(df.head())
+# Print 10 most similar movies
+print(words.head(10)['movie_title'])
