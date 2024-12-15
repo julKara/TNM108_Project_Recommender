@@ -71,31 +71,102 @@ movrev = movies_data.join(revcon)
 
 ##################################################################################################
 
-# detta ger en lista av alla keywords.
-# om en film inte kan hitta keywords, ta bort från datan.
-# detta tar tid, så vi kör den bara en gång
+# Keyword extraction (optimized - parallell processing)
 
-klist = []
-movrev = movrev.reset_index()
-i = 0
-size = len(movrev)
-while (i < len(movrev)):
+import re
+from nltk.corpus import stopwords
+from concurrent.futures import ProcessPoolExecutor
+import logging
+import nltk
+
+# Download NLTK stopwords
+STOPWORDS = set(stopwords.words('english')) # automatic remove words like “the”, “a”, “an”, or “in”, check: https://www.geeksforgeeks.org/removing-stop-words-nltk-python/
+
+# Configure logging - log progress (and errors) in keyword_extraction.log
+logging.basicConfig(
+    filename='keyword_extraction.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# Preprocess review text
+def preprocess_text(text):
+    # Check if text is a string - otherwise convert it to ""
+    if not isinstance(text, str):
+        text = ""
+    text = text.lower()
+    # Add other preprocessing steps here (e.g., removing punctuation)
+    text = re.sub(r'\W+', ' ', text)
+    return text
+
+# Extract keywords with error handling using the nltk keyword-extract (like lab4 part3)
+def extract_keywords_safe(review_content):
     try:
-        kk = keywords.keywords(movrev.loc[i,'review_content']).replace("\n", " ")
-        if kk != "":
-            print(i)
-            klist.append(kk)
-        else:
-            print("         " + movrev.loc[i,'movie_title'])
-            movrev = movrev.drop(i)
-            movrev = movrev.reset_index(drop=True)
-            i -= 1
-    except: 
-        print("         " + movrev.loc[i,'movie_title'])
-        movrev = movrev.drop(i)
-        movrev = movrev.reset_index(drop=True)
-        i -= 1
-    i+=1
-kseries = pd.Series(klist)
-movrev.insert(loc=0, column='keywords', value=kseries)
-movrev.to_csv('keywords.csv', index=False)
+        if not review_content.strip():  # Skip empty strings
+            return None
+        result = keywords.keywords(review_content, ratio=0.2, words=10).replace("\n", " ")
+        logging.info(f"Extracted keywords: {result}")   # Write result out in log
+        return result
+    except Exception as e:  # Error handling
+        logging.error(f"Keyword extraction failed: {str(e)}")
+        return None
+
+# Parallel processing function - like in lab4 part2B (inspired)
+def parallel_keyword_extraction(dataframe, num_workers=4):
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        result = list(executor.map(extract_keywords_safe, dataframe['cleaned_content']))
+    return result
+
+# Ensure multiprocessing code is wrapped correctly (fix for the __main__ problem)
+if __name__ == '__main__':
+
+    # # Fake data for test
+    # movrev = pd.DataFrame({
+    #     'movie_title': ['Movie A', 'Movie B'], 
+    #     'review_content': ['This is a great movie', 'I did not like the film'],
+    #     'genres': ['action adventure', 'comedy romance']
+    # })
+    
+    # Preprocess review_content
+    movrev['cleaned_content'] = movrev['review_content'].apply(preprocess_text)
+    
+    # TRYING to make the genres on lower case as well
+    # movrev['genres'].apply(preprocess_text)
+
+    # Debugging: Cleaned content
+    # print("Cleaned Content:")
+    # print(movrev['cleaned_content'])
+
+    # Extract keywords in parallel
+    movrev['keywords'] = parallel_keyword_extraction(movrev, num_workers=None)  # Use max available cores
+    
+    # Add genres to keywords
+    def combine_keywords_and_genres(row):
+        keywords_list = row['keywords'] if row['keywords'] else ""
+        genres_list = row['genres'] if isinstance(row['genres'], str) else ""
+        return f"{keywords_list} {genres_list}".strip()
+    
+    # Use function combine_keywords_and_genres
+    movrev['combined_keywords'] = movrev.apply(combine_keywords_and_genres, axis=1)
+    
+    # Drop rows with missing keywords
+    movrev = movrev[movrev['combined_keywords'].notnull()]
+    
+    # Debugging: Check keywords column
+    # print("Extracted Keywords:")
+    # print(movrev[['review_content', 'keywords']])
+
+    # Drop rows with missing or empty keywords
+    movrev = movrev[movrev['keywords'].notnull() & (movrev['keywords'] != "")]
+
+    # Debugging: Check res
+    # print("Result:")
+    # print(movrev)
+
+    # Save final dataset
+    movrev.to_csv('keywords_with_genres.csv', index=False)
+
+    # Print confirmation
+    print("keywords_with_genres.csv")
+    
+    # Observation: 11904 rows (movies) in result
