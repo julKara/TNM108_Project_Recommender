@@ -38,7 +38,6 @@ input_tfidf = tfidf_vectorizer.transform(userString)
 cos_similarity = cosine_similarity(input_tfidf, keyword_matrix)
 csims = cos_similarity[0]
 
-
 # Output
 words['Percentage Match'] = csims * 100
 words = words.sort_values(by=['Percentage Match'], ascending=False)
@@ -52,9 +51,8 @@ print("\n\n############### Your Review #######################")
 print(userInput)
 print("############### YOU SHOULD WATCH ##################")
 if len(words) != 0:
-    print("Top 10 Recommended Movies:")
     for idx, row in top_recommendations.iterrows():
-        print(f"{row['movie_title']} | Genres: {row['genres']} | Percentage Match: {idx:.2f}")
+        print(f"{row['movie_title']} | Genres: {row['genres']} | Percentage Match: {idx:.2f}%")
 else:
     print("No movies found.")
         
