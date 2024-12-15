@@ -44,13 +44,18 @@ words['Percentage Match'] = csims * 100
 words = words.sort_values(by=['Percentage Match'], ascending=False)
 words = words[(words['Percentage Match'] > 0.0)]
 words = words.set_index('Percentage Match')
-words = words.head(10)
 
-print("\n\n############### IF YOU WANT #######################")
+# Print the top 10 similar movies with additional context
+top_recommendations = words.head(10)
+
+print("\n\n############### Your Review #######################")
 print(userInput)
 print("############### YOU SHOULD WATCH ##################")
 if len(words) != 0:
-    print(words['movie_title'])
+    print("Top 10 Recommended Movies:")
+    for idx, row in top_recommendations.iterrows():
+        print(f"{row['movie_title']} | Genres: {row['genres']} | Percentage Match: {idx:.2f}")
 else:
-    print("Nothing")
+    print("No movies found. Suggesting based on related genres instead.")
+        
 print("\n\n")
