@@ -38,10 +38,19 @@ input_tfidf = tfidf_vectorizer.transform(userString)
 cos_similarity = cosine_similarity(input_tfidf, keyword_matrix)
 csims = cos_similarity[0]
 
-# Apply similarity score to dataset
-words['score'] = csims
-words = words.sort_values(by=['score'], ascending=False)
-words = words.set_index('score')
 
-# Print 10 most similar movies
-print(words.head(10)['movie_title'])
+# Output
+words['Percentage Match'] = csims * 100
+words = words.sort_values(by=['Percentage Match'], ascending=False)
+words = words[(words['Percentage Match'] > 0.0)]
+words = words.set_index('Percentage Match')
+words = words.head(10)
+
+print("\n\n############### IF YOU WANT #######################")
+print(userInput)
+print("############### YOU SHOULD WATCH ##################")
+if len(words) != 0:
+    print(words['movie_title'])
+else:
+    print("Nothing")
+print("\n\n")

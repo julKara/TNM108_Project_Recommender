@@ -9,13 +9,13 @@ from summa import keywords
 # 3. Match the user keywords to the most similar movies (cosine similarity).
 #   a. Factor in popularity.
 
-keys = pd.read_csv("./keywords.csv")
+keys = pd.read_csv("./keywords_with_genres.csv")
 
 #print(keys["genres"].to_string())
 
 kh = keys["review_content"] # jämför med reviews 
-#kh = keys["keywords"]       # jämför med keywords från reviews... mycket sämre
-inputkey = "haunted house"
+kh = keys["keywords"]       # jämför med keywords från reviews... mycket sämre
+inputkey = "Amazing music"
 
 Z = kh
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -26,17 +26,26 @@ iktfidf = tfidf_vectorizer.transform([inputkey])
 cos_similarity = cosine_similarity(iktfidf[0], tfidf_matrix)
 csims = cos_similarity[0]
 
+
+
 popularity = keys["audience_count"].to_numpy()
 #csims = csims + (popularity / 100000000) # delat på en miljard
 #csims = csims * popularity
 
-keys['score'] = csims
-keys = keys.sort_values(by=['score'], ascending=False)
-keys = keys.set_index('score')
+#csims = '{:.1%}'.format(csims)
 
+keys['Percentage Match'] = csims * 100
+
+keys = keys.sort_values(by=['Percentage Match'], ascending=False)
+keys = keys[(keys['Percentage Match'] > 0.0)]
+keys = keys.set_index('Percentage Match')
+keys = keys.head(10)
 
 print("\n\n############### IF YOU WANT #######################")
 print(inputkey)
 print("############### YOU SHOULD WATCH ##################")
-print(keys.head(10)['movie_title'])
+if len(keys) != 0:
+    print(keys['movie_title'])
+else:
+    print("Nothing")
 print("\n\n")
